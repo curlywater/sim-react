@@ -7,6 +7,8 @@ let nextOfUnitWork = null;
 let workInProgressRoot = null;
 let currentRoot = null;
 let deletions = null;
+let workInProgressFiber = null;
+let hookIndex = null;
 
 function createDOM(fiber) {
   const { type, props } = fiber;
@@ -58,11 +60,10 @@ function commitWork(fiber) {
 
   if (fiber.effectTag === "DELETION") {
     commitDeletion(domParent, fiber);
-    domParent.removeChild(fiber.dom);
   } else if (fiber.effectTag === "PLACEMENT" && fiber.dom !== null) {
     domParent.appendChild(fiber.dom);
   } else if (fiber.effectTag === "UPDATE" && fiber.dom !== null) {
-    updateDOM(fiber.dom, fiber.props, fiber.alternate.props);
+    updateDOM(fiber.dom, fiber.alternate.props, fiber.props);
   }
 
   commitWork(fiber.child);
@@ -109,6 +110,9 @@ function workLoop(deadline) {
 requestIdleCallback(workLoop);
 
 function updateFunctionComponent(fiber) {
+  workInProgressFiber = fiber;
+  hookIndex = 0;
+  workInProgressFiber.hooks = [];
   const children = [fiber.type(fiber.props)];
   reconcileChildren(fiber, children);
 }
@@ -197,4 +201,46 @@ function performUnitOfWork(fiber) {
   }
 }
 
-export { SimactDOM as default };
+function useState(initial) {
+  // 找到oldFiber.hooks，复用hook或者做初始化处理，生成新hook
+  // 加入newFiber的hook队列，队列能实现在一个component中多次使用useState。
+
+  const oldHook =
+    workInProgressFiber.alternate &&
+    workInProgressFiber.alternate.hooks &&
+    workInProgressFiber.alternate.hooks[hookIndex];
+
+  const hook = {
+    state: oldHook ? oldHook.state : initial,
+    queue: [],
+  };
+
+  if (oldHook) {
+    console.log(oldHook.queue, oldHook.state);
+    oldHook.queue.forEach((action) => {
+      hook.state = action(hook.state);
+    });
+    console.log(hook.state);
+  }
+
+  const setState = (action) => {
+    hook.queue.push(action);
+    deletions = [];
+    workInProgressRoot = {
+      dom: currentRoot.dom,
+      props: currentRoot.props,
+      alternate: currentRoot,
+    };
+    nextOfUnitWork = workInProgressRoot;
+  };
+
+  workInProgressFiber.hooks.push(hook);
+  hookIndex++;
+  return [hook.state, setState];
+}
+
+const currentDispatcher = {
+  useState,
+};
+
+export { SimactDOM as default, currentDispatcher };

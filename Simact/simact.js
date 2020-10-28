@@ -1,3 +1,8 @@
+import { currentDispatcher } from "@simact/simact-dom";
+function useState(initialState) {
+  return currentDispatcher.useState(initialState);
+}
+
 const Simact = {
   createElement(type, config, ...children) {
     let key = null;
@@ -37,6 +42,7 @@ const Simact = {
       props,
     };
   },
+  useState,
 };
 
-export { Simact as default };
+export { Simact as default, useState };
