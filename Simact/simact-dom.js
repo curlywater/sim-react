@@ -50,9 +50,14 @@ function commitWork(fiber) {
   if (!fiber) {
     return;
   }
+  let parentFiber = fiber.parent;
+  while (parentFiber.dom === null) {
+    parentFiber = parentFiber.parent;
+  }
+  const domParent = parentFiber.dom;
 
-  const domParent = fiber.parent.dom;
   if (fiber.effectTag === "DELETION") {
+    commitDeletion(domParent, fiber);
     domParent.removeChild(fiber.dom);
   } else if (fiber.effectTag === "PLACEMENT" && fiber.dom !== null) {
     domParent.appendChild(fiber.dom);
@@ -62,6 +67,14 @@ function commitWork(fiber) {
 
   commitWork(fiber.child);
   commitWork(fiber.sibling);
+}
+
+function commitDeletion(domParent, fiber) {
+  if (fiber.dom) {
+    domParent.removeChild(fiber.dom);
+  } else {
+    commitDeletion(domParent, fiber.child);
+  }
 }
 
 const SimactDOM = {
@@ -95,18 +108,26 @@ function workLoop(deadline) {
 }
 requestIdleCallback(workLoop);
 
-function performUnitOfWork(fiber) {
+function updateFunctionComponent(fiber) {
+  const children = [fiber.type(fiber.props)];
+  reconcileChildren(fiber, children);
+}
+
+function updateHostComponent(fiber) {
   // create dom
   if (!fiber.dom) {
     fiber.dom = createDOM(fiber);
   }
 
-  const elements = fiber.props.children;
+  reconcileChildren(fiber, fiber.props.children);
+}
+
+function reconcileChildren(fiber, elements) {
+  // create children fibers
   let oldFiber = fiber.alternate && fiber.alternate.child;
   let index = 0;
   let prevSibling = null;
 
-  // create children fibers
   while (index < elements.length || oldFiber) {
     let newFiber = null;
     const element = elements[index];
@@ -151,6 +172,14 @@ function performUnitOfWork(fiber) {
     if (oldFiber) {
       oldFiber = oldFiber.sibling;
     }
+  }
+}
+
+function performUnitOfWork(fiber) {
+  if (fiber.type instanceof Function) {
+    updateFunctionComponent(fiber);
+  } else {
+    updateHostComponent(fiber);
   }
 
   // return next unitOfWork

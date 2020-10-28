@@ -54,5 +54,6 @@ module.exports = {
     alias: {
       "@simact": path.join(__dirname, "Simact"),
     },
+    extensions: [".js", ".jsx"],
   },
 };
