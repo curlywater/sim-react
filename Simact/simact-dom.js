@@ -154,7 +154,7 @@ function reconcileChildren(fiber, elements) {
         props: element.props,
         dom: null,
         parent: fiber,
-        alternate: oldFiber,
+        alternate: null,
         effectTag: "PLACEMENT",
       };
     }
