@@ -5,7 +5,6 @@ import "./styles.css";
 
 export default function App() {
   const [count, setCount] = useState(0);
-  console.log(count);
   return (
     <div className="App">
       <h1>Hello CodeSandbox</h1>

@@ -1,9 +1,15 @@
-// @jsx Simact.createElement
+// import App from "./App";
+import React from "react";
+import { mount } from "../stack-reconciler";
 
-import Simact from "@simact/simact";
-import SimactDOM from "@simact/simact-dom";
-import App from "./App";
+const App = () => {
+  return (
+    <div>
+      <h1>Hello</h1>
+      <p>World</p>
+    </div>
+  );
+};
 
 const root = document.getElementById("root");
-
-SimactDOM.render(<App />, root);
+root.appendChild(mount(<App />));
