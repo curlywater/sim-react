@@ -1,15 +1,20 @@
 // import App from "./App";
 import React from "react";
-import { mount } from "../stack-reconciler";
+import { render } from "../stack-reconciler";
 
+class Heading extends React.Component {
+  render() {
+    return <h1>Hello</h1>;
+  }
+}
 const App = () => {
   return (
     <div>
-      <h1>Hello</h1>
+      <Heading></Heading>
       <p>World</p>
     </div>
   );
 };
 
 const root = document.getElementById("root");
-root.appendChild(mount(<App />));
+render(<App />, root);

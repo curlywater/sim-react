@@ -1,20 +1,35 @@
-function mount(element) {
-  if (typeof element === "string") {
-    return mountTextNode(element);
-  }
+function render(element, container) {
+  const rootComponent = instantiateComponent(element);
+  container.appendChild(rootComponent.mount());
+  return rootComponent.getPubicInstance();
+}
 
-  const { type } = element;
-  if (typeof type === "function") {
-    // 自定义组件
-    return mountComposite(element);
-  } else if (typeof type === "string") {
-    // 宿主元素
-    return mountHost(element);
+function instantiateComponent(element) {
+  if (typeof element === "string") {
+    return new TextNode(element);
+  } else {
+    const { type } = element;
+    if (typeof type === "function") {
+      return new CompositeComponent(element);
+    } else if (typeof type === "string") {
+      return new HostComponent(element);
+    }
   }
 }
 
-function mountTextNode(text) {
-  return document.createTextNode(text);
+class TextNode {
+  constructor(element) {
+    this.currentElement = element;
+    this.node = null;
+  }
+  getPublicInstance() {
+    return this.node;
+  }
+
+  mount() {
+    this.node = document.createTextNode(this.currentElement);
+    return this.node;
+  }
 }
 
 /**
@@ -26,48 +41,75 @@ function isClass(type) {
   return Boolean(type.prototype) && Boolean(type.prototype.isReactComponent);
 }
 
-/**
- *
- * @param {function} element
- * @returns {HTMLElement}
- */
-function mountComposite(element) {
-  const { type, props } = element;
-  let renderedElement;
-  if (isClass(type)) {
-    // 类组件
-    const publicInstance = new type(props);
-    publicInstance.props = props;
-    renderedElement = publicInstance.render();
-  } else {
-    // 函数组件
-    renderedElement = type(props);
+class CompositeComponent {
+  constructor(element) {
+    this.currentElement = element;
+    this.renderedElement = null;
+    this.publicInstance = null;
   }
 
-  return mount(renderedElement);
-}
-
-function mountHost(element) {
-  const type = element.type;
-  let { children = [], ...props } = element.props;
-
-  console.log(element);
-  if (!Array.isArray(children)) {
-    children = [children];
+  getPubicInstance() {
+    return this.publicInstance;
   }
 
-  // 清除null/undefined/0
-  children = children.filter(Boolean);
+  mount() {
+    const { type, props } = this.currentElement;
+    let publicInstance = null;
+    let renderedElement = null;
+    if (isClass(type)) {
+      // 类组件
+      publicInstance = new type(props);
+      publicInstance.props = props;
+      renderedElement = publicInstance.render();
+    } else {
+      // 函数组件
+      renderedElement = type(props);
+    }
 
-  const node = document.createElement(type);
-  Object.keys(props).forEach((key) => {
-    node[key] = props[key];
-  });
-  children.forEach((child) => {
-    node.appendChild(mount(child));
-  });
+    this.publicInstance = this.publicInstance;
+    this.renderedElement = instantiateComponent(renderedElement);
 
-  return node;
+    return this.renderedElement.mount();
+  }
 }
 
-export { mount };
+class HostComponent {
+  constructor(element) {
+    this.currentElement = element;
+    this.node = null;
+    this.renderedChildren = [];
+  }
+
+  getPubicInstance() {
+    return this.node;
+  }
+
+  mount() {
+    const type = this.currentElement.type;
+    let { children = [], ...props } = this.currentElement.props;
+
+    if (!Array.isArray(children)) {
+      children = [children];
+    }
+
+    // 清除null/undefined/0
+    children = children.filter(Boolean);
+
+    const node = document.createElement(type);
+    Object.keys(props).forEach((key) => {
+      node[key] = props[key];
+    });
+
+    const renderedChildren = children.map(instantiateComponent);
+    renderedChildren.forEach((child) => {
+      node.appendChild(child.mount());
+    });
+
+    this.node = node;
+    this.renderedChildren = renderedChildren;
+
+    return node;
+  }
+}
+
+export { render };
