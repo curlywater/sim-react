@@ -4,4 +4,14 @@ import { render } from "../stack-reconciler";
 
 const root = document.getElementById("root");
 
-render(<App />, root);
+let count = 0;
+const updateCount = () => {
+  count++;
+  renderApp();
+};
+
+function renderApp() {
+  render(<App count={count} updateCount={updateCount} />, root);
+}
+
+renderApp();

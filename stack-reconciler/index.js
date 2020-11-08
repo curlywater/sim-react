@@ -32,7 +32,11 @@ function unmountComponentAtNode(container) {
 
 // 返回内部实例
 function instantiateComponent(element) {
-  if (typeof element === "string") {
+  if (
+    typeof element === "string" ||
+    typeof element === "number" ||
+    typeof element === "boolean"
+  ) {
     return new TextNode(element);
   } else {
     const { type } = element;
@@ -93,7 +97,6 @@ class CompositeComponent {
 
   receive(nextElement) {
     // 更新当前实例
-    const prevElement = this.currentElement;
     const publicInstance = this.publicInstance;
     const prevRenderedComponent = this.renderedComponent;
     const prevRenderedElement = prevRenderedComponent.currentElement;
@@ -174,14 +177,25 @@ class HostComponent {
     const nextProps = nextElement.props;
 
     Object.keys(prevProps).forEach((name) => {
-      if (name !== "children" && !nextProps.hasOwnProperty(name)) {
-        node.removeAttribute(name);
+      if (name !== "children") {
+        if (name.startsWith("on")) {
+          node.removeEventListener(
+            name.slice(2).toLowerCase(),
+            prevProps[name]
+          );
+        } else if (!nextProps.hasOwnProperty(name)) {
+          node.removeAttribute(name);
+        }
       }
     });
 
     Object.keys(nextProps).forEach((name) => {
       if (name !== "children") {
-        node.setAttribute(name, nextProps[name]);
+        if (name.startsWith("on")) {
+          node.addEventListener(name.slice(2).toLowerCase(), nextProps[name]);
+        } else {
+          node.setAttribute(name, nextProps[name]);
+        }
       }
     });
     // 更新子实例
@@ -266,11 +280,15 @@ class HostComponent {
     }
 
     // 清除null/undefined/0
-    children = children.filter(Boolean);
+    children = children.filter((child) => Boolean(child) || child === 0);
 
     const node = document.createElement(type);
     Object.keys(props).forEach((key) => {
-      node[key] = props[key];
+      if (key.startsWith("on")) {
+        node.addEventListener(key.slice(2).toLowerCase(), props[key]);
+      } else {
+        node[key] = props[key];
+      }
     });
 
     const renderedChildren = children.map(instantiateComponent);
